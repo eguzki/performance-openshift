@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: DeploymentConfig
+metadata:
+  name: redis-cache-01
+spec:
+  strategy:
+    type: Recreate
+    recreateParams:
+      timeoutSeconds: 600
+    activeDeadlineSeconds: 21600
+  triggers:
+    - type: ConfigChange
+  replicas: 1
+  test: false
+  selector:
+    app: redis-cache
+  template:
+    metadata:
+      labels:
+        name: redis-cache-01
+        app: redis-cache
+    spec:
+      volumes:
+        - name: redis-cache-volume
+          configMap:
+            name: redis-cache-config
+            items:
+              - key: redis.conf
+                path: redis.conf
+            defaultMode: 420
+      containers:
+        - name: redis-cache
+          image: 'rhscl/redis-32-rhel7:3.2'
+          volumeMounts:
+            - name: redis-cache-volume
+              mountPath: /etc/redis.d
+          command:
+            - "/opt/rh/rh-redis32/root/usr/bin/redis-server"
+          args:
+            - "/etc/redis.d/redis.conf"
+          livenessProbe:
+            tcpSocket:
+              port: 6379
+            initialDelaySeconds: 10
+            timeoutSeconds: 1
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - container-entrypoint
+                - bash
+                - '-c'
+                - redis-cli set liveness-probe "`date`" | grep OK
+            initialDelaySeconds: 30
+            timeoutSeconds: 30
+            periodSeconds: 30
+            successThreshold: 1
+            failureThreshold: 3
+          terminationMessagePath: /dev/termination-log
+          imagePullPolicy: IfNotPresent
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      nodeSelector:
+        kubernetes.io/hostname: ip-10-0-103-242.eu-central-1.compute.internal

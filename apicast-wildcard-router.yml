@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Route
+metadata:
+  name: apicast-wildcard-router-route
+spec:
+  host: something.benchmark.3sca.net
+  to:
+    kind: Service
+    name: apicast-production
+  port:
+    targetPort: gateway
+  wildcardPolicy: Subdomain
